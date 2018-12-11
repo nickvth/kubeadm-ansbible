@@ -21,7 +21,7 @@ version = 1.13.0
 Generate [ssh-key](https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/)
 
 ```
-ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+$ ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 ```
 
 ***Spin up vm's***
@@ -33,16 +33,16 @@ $ vagrant up
 
 ***Add your public key to vagrant user***
 ```
-cat [localtion public key] example: cat ~/.ssh/id_rsa.pub
-vagrant ssh kubemaster1
-vi ~/.ssh/authorized_keys
+$ cat [localtion public key] example: cat ~/.ssh/id_rsa.pub
+$ vagrant ssh kubemaster1
+$ vi ~/.ssh/authorized_keys
 ```
 Do this also for worker1/2/3
 
 
 ***Run ansible playbook***
 ```
-cd ansible
+$ cd ansible
 $ ansible-playbook -i inventory/hosts -u vagrant --private-key [location private key] playbook.yml
 ```
 
@@ -69,7 +69,7 @@ $ kubectl proxy &
 
 ***ssh tunnel to dashboard***
 ```
-ssh -L 8001:127.0.0.1:8001 -i [location private key] vagrant@10.10.43.10
+$ ssh -L 8001:127.0.0.1:8001 -i [location private key] vagrant@10.10.43.10
 ```
 
 http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/
