@@ -1,0 +1,82 @@
+---
+# This role will configure master node(s)
+
+- name: kubeadm initialize cluster
+  command: "kubeadm init --pod-network-cidr={{ kube_pod_network_cidr }} --apiserver-advertise-address={{ private_ip }}"
+  args:
+    creates: /etc/kubernetes/admin.conf
+
+- name: Create user kubernetes
+  user:
+    name: kubernetes
+    comment: "kubernetes-infrastructure"
+    uid: 19999
+
+- name: Create .kube dir in home
+  file:
+    path: /home/kubernetes/.kube
+    owner: kubernetes
+    group: kubernetes
+    mode: 0750
+    state: directory
+
+- name: Copy admin.conf to /home/kubernetes/.kube
+  command: cp -i /etc/kubernetes/admin.conf /home/kubernetes/.kube/config
+  args:
+    creates: /home/kubernetes/.kube/config 
+
+- name: Set correct permissions
+  file:
+    path: /home/kubernetes/.kube/config
+    owner: kubernetes
+    group: kubernetes
+    mode: 0640
+
+- name: Create Calico network
+  command: "kubectl apply -f {{ item }}"
+  become_user: kubernetes
+  loop:
+    - "https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/rbac-kdd.yaml"
+    - "https://docs.projectcalico.org/v3.3/getting-started/kubernetes/installation/hosted/kubernetes-datastore/calico-networking/1.7/calico.yaml"
+
+# Pause for 5 minutes to build app cache.
+- name: Pause for 2 minutes, so calico and coredns are deployed
+  pause:
+   minutes: 2
+
+- name: Get pods --all-namespaces
+  command: kubectl get pods --all-namespaces
+  become_user: kubernetes
+  register:
+   get_all_namespaces
+
+- name: "Show all namespaces and check if coredns is running"
+  debug: msg="{{ get_all_namespaces }}"
+
+- name: Deploy kubernetes dashboard into cluster
+  command: "kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml"
+  become_user: kubernetes
+  register: create_result
+  until: create_result.rc == 0
+  retries: 5
+  delay: 2
+  ignore_errors: true
+
+- name: Copy admin serviceaccount config, needed for access to dashboard
+  copy:
+   src: "{{ item }}"
+   dest: "/home/kubernetes/{{ item }}"
+   mode: 0640
+   owner: kubernetes
+   group: kubernetes
+  loop:
+    - admin-user-serviceaccount.yaml
+    - admin-user-role-binding.yaml
+
+# Get token to login to dashboard kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep admin-user | awk '{print $1}')
+- name: Create admin serviceaccount
+  command: "kubectl create -f /home/kubernetes/{{ item }}"
+  become_user: kubernetes
+  loop:
+    - admin-user-serviceaccount.yaml
+    - admin-user-role-binding.yaml

@@ -1,0 +1,45 @@
+---
+# This role will configure worker node(s)
+
+# Token will be exipered after 24h, so for joining new workers create a new bootstrap token at the master
+- name: "Create new token on master node"
+  command: "kubeadm token create"
+  register: kube_bootstrap_token
+  become_user: kubernetes
+  delegate_to: "{{ hostvars[groups['kubeadm-masters'][0]]['private_ip'] }}"
+
+- name: "Get sha256 hash from kubernetes master certificate authority"
+  shell: "openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'"
+  register: kube_discovery_token_ca_cert_hash
+  delegate_to: "{{ hostvars[groups['kubeadm-masters'][0]]['private_ip'] }}"
+
+- name: Join to Kubernetes cluster
+  shell: "kubeadm join --token {{ kube_bootstrap_token.stdout }} {{ hostvars[groups['kubeadm-masters'][0]]['private_ip'] }}:6443 --discovery-token-ca-cert-hash sha256:{{ kube_discovery_token_ca_cert_hash.stdout }}"
+  register: join_cluster
+  args:
+    creates: /etc/kubernetes/kubelet.conf
+
+- name: "Show output of joined worker"
+  debug: msg="{{ join_cluster.stdout }}"
+  when: join_cluster.changed
+
+- name: Enable and restart kubelet engine
+  systemd:
+    name: kubelet
+    daemon_reload: yes
+    state: restarted
+    enabled: yes
+  when: join_cluster.changed
+
+- name: Pause for 60 seconds, so kubelet can start and join the cluster
+  pause:
+    seconds: 60
+
+- name: Get nodes to check if node is joined
+  shell: "kubectl get nodes |grep {{ ansible_hostname }}"
+  become_user: kubernetes
+  register: kube_get_nodes
+  delegate_to: "{{ hostvars[groups['kubeadm-masters'][0]]['private_ip'] }}"
+
+- name: "Show all nodes in the cluster"
+  debug: msg="{{ kube_get_nodes.stdout }}"

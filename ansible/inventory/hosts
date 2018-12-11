@@ -1,0 +1,7 @@
+[kubeadm-masters]
+kubeadm-master
+
+[kubeadm-workers]
+kubeadm-worker1
+kubeadm-worker2
+kubeadm-worker3

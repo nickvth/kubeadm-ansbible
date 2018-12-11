@@ -1,0 +1,17 @@
+# Playbook to install kubernetes proof of concept environment 
+
+- hosts: all
+  become: true
+  roles:
+    - { role: docker, tags: docker }
+    - { role: kubeadm/install, tags: kube-install }
+
+- hosts: kubeadm-master
+  become: true
+  roles:
+    - { role: kubeadm/master, tags: kube-master }
+
+- hosts: kubeadm-workers
+  become: true
+  roles:
+    - { role: kubeadm/worker, tags: kube-worker }

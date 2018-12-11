@@ -1,0 +1,67 @@
+---
+# This role will install Docker
+
+- name: Install docker packages
+  yum:
+    name: "{{ item }}"
+    update_cache: yes
+    state: present
+  loop:
+    - docker
+    - docker-logrotate
+    - policycoreutils-python
+    - cloud-utils-growpart
+
+- name: Check firewalld systemd file
+  stat:
+    path: /usr/lib/systemd/system/firewalld.service
+  register: check_file_result
+
+- name: Stop firewalld when exists
+  service:
+    name: firewalld
+    state: stopped
+    enabled: no
+  when: check_file_result.stat.exists
+
+- name: Creates needed directory docker-gc
+  file:
+    path: "/etc/docker-gc-exclude"
+    state: directory
+    mode: 0755
+  tags: docker-gc
+
+- name: Copy docker-gc-exclude file
+  copy:
+    src: docker-gc-exclude
+    dest: /etc/docker-gc-exclude/docker-gc-exclude
+  tags: docker-gc
+
+- name: Stop Docker instance if running
+  service:
+    name: docker
+    state: stopped
+
+- name: Addgroup docker to give user(s) privileges to run docker cli
+  group:
+    name: docker
+    state: present
+
+- name: Reload systemctl
+  command: /bin/systemctl daemon-reload
+
+- name: Enable docker on boot
+  service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Garbage collector docker container and images
+  cron:
+    name: "Garbage collector docker container and images"
+    hour: "4"
+    minute: "0"
+    user: "root"
+    job: /usr/bin/docker run --rm -e FORCE_IMAGE_REMOVAL=1 -v /var/run/docker.sock:/var/run/docker.sock -v /etc/docker-gc-exclude:/etc spotify/docker-gc > /dev/null 2>&1
+    state: present
+  tags: docker-gc
