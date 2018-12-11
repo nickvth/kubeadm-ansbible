@@ -57,7 +57,7 @@ $ kubectl get pods
 
 ### Dashboard
 
-Get token to login to dashboard 
+Get token to login into dashboard 
 ```bash
 $ kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep admin-user | awk '{print $1}')
 ```
