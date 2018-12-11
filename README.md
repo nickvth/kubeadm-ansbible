@@ -5,7 +5,7 @@ This ansible playbook will install a kubernetes proof of concept environment on 
 
 **Please use this playbook not for production environments!** 
 
-version = 1.13.0
+Kubernetes version = 1.13.0
 
 ## Requirements
 * vagrant 
