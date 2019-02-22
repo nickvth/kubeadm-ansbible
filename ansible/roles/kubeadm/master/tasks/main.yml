@@ -54,7 +54,7 @@
   debug: msg="{{ get_all_namespaces }}"
 
 - name: Deploy kubernetes dashboard into cluster
-  command: "kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml"
+  command: "kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended/kubernetes-dashboard.yaml"
   become_user: kubernetes
   register: create_result
   until: create_result.rc == 0
